@@ -108,6 +108,7 @@ struct oslmic_radio_rssi_s {
 };
 
 int radio_init (void);
+int radio_is_pending_irq();
 void radio_irq_handler (u1_t dio);
 void radio_irq_handler_v2 (u1_t dio, ostime_t tref);
 void os_init (void);

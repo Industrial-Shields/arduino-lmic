@@ -1264,6 +1264,20 @@ static CONST_TABLE(u2_t, LORA_RXDONE_FIXUP)[] = {
     [SF12] = us2osticks(31189), // (1022 ticks)
 };
 
+int radio_is_pending_irq() {
+    if( (readReg(RegOpMode) & OPMODE_LORA) != 0) { // LORA modem
+        u1_t flags = readReg(LORARegIrqFlags);
+        return (flags & (IRQ_LORA_TXDONE_MASK | IRQ_LORA_RXDONE_MASK | IRQ_LORA_RXTOUT_MASK));
+    } else { // FSK modem
+        u1_t flags1 = readReg(FSKRegIrqFlags1);
+        u1_t flags2 = readReg(FSKRegIrqFlags2);
+
+        return (flags2 & (IRQ_FSK2_PACKETSENT_MASK | IRQ_FSK2_PAYLOADREADY_MASK)) | (flags1 & IRQ_FSK1_TIMEOUT_MASK );
+    }
+
+    return 0;
+}
+
 // called by hal ext IRQ handler
 // (radio goes to stanby mode after tx/rx operations)
 void radio_irq_handler (u1_t dio) {

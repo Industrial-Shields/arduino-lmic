@@ -27,13 +27,17 @@ static Arduino_LMIC::HalConfiguration_t *pHalConfig;
 static Arduino_LMIC::HalConfiguration_t nullHalConig;
 static hal_failure_handler_t* custom_hal_failure_handler = NULL;
 
+#if defined(LMIC_USE_INTERRUPTS)
 static void hal_interrupt_init(); // Fwd declaration
+#endif
 
 static void hal_io_init () {
     // NSS and DIO0 are required, DIO1 is required for LoRa, DIO2 for FSK
     ASSERT(plmic_pins->nss != LMIC_UNUSED_PIN);
+#if defined(LMIC_USE_INTERRUPTS)
     ASSERT(plmic_pins->dio[0] != LMIC_UNUSED_PIN);
     ASSERT(plmic_pins->dio[1] != LMIC_UNUSED_PIN || plmic_pins->dio[2] != LMIC_UNUSED_PIN);
+#endif
 
 //    Serial.print("nss: "); Serial.println(plmic_pins->nss);
 //    Serial.print("rst: "); Serial.println(plmic_pins->rst);
@@ -55,7 +59,9 @@ static void hal_io_init () {
         pinMode(plmic_pins->rst, INPUT);
     }
 
+#if defined(LMIC_USE_INTERRUPTS)
     hal_interrupt_init();
+#endif
 }
 
 // val == 1  => tx
@@ -89,30 +95,13 @@ static_assert(NUM_DIO_INTERRUPT <= NUM_DIO, "Number of interrupt-sensitive lines
 static ostime_t interrupt_time[NUM_DIO_INTERRUPT] = {0};
 
 #if !defined(LMIC_USE_INTERRUPTS)
-static void hal_interrupt_init() {
-    pinMode(plmic_pins->dio[0], INPUT);
-    if (plmic_pins->dio[1] != LMIC_UNUSED_PIN)
-        pinMode(plmic_pins->dio[1], INPUT);
-    if (plmic_pins->dio[2] != LMIC_UNUSED_PIN)
-        pinMode(plmic_pins->dio[2], INPUT);
-    static_assert(NUM_DIO_INTERRUPT == 3, "Number of interrupt lines must be set to 3");
-}
-
-static bool dio_states[NUM_DIO_INTERRUPT] = {0};
 void hal_pollPendingIRQs_helper() {
-    uint8_t i;
-    for (i = 0; i < NUM_DIO_INTERRUPT; ++i) {
-        if (plmic_pins->dio[i] == LMIC_UNUSED_PIN)
-            continue;
-
-        if (dio_states[i] != digitalRead(plmic_pins->dio[i])) {
-            dio_states[i] = !dio_states[i];
-            if (dio_states[i] && interrupt_time[i] == 0) {
-                ostime_t const now = os_getTime();
-                interrupt_time[i] = now ? now : 1;
-            }
-        }
-    }
+	if (radio_is_pending_irq()) {
+		if (interrupt_time[0] == 0) {
+			ostime_t const now = os_getTime();
+			interrupt_time[0] = now ? now : 1;
+		}
+	}
 }
 
 #else
@@ -156,8 +145,10 @@ void hal_processPendingIRQs() {
     uint8_t i;
     for (i = 0; i < NUM_DIO_INTERRUPT; ++i) {
         ostime_t iTime;
+#if defined(LMIC_USE_INTERRUPTS)
         if (plmic_pins->dio[i] == LMIC_UNUSED_PIN)
             continue;
+#endif
 
         // NOTE(tmm@mcci.com): if using interrupts, this next step
         // assumes uniprocessor and fairly strict memory ordering
