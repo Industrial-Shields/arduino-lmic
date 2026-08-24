@@ -23,20 +23,20 @@
  *
  *      extern "C" void lmic_aes_encrypt(u1_t *data, u1_t *key);
  *
- *  That takes a single 16-byte buffer and encrypts it wit the given
+ *  That takes a single 16-byte buffer and encrypts it with the given
  *  16-byte key.
  */
 
-#include "../lmic/oslmic.h"
+#include "lmic_aes_api.h"
 
 #if !defined(USE_ORIGINAL_AES)
 
 // This should be defined elsewhere
 void lmic_aes_encrypt(u1_t *data, u1_t *key);
 
-// global area for passing parameters (aux, key) and for storing round keys
+// global area for passing parameters (aux, key)
 u4_t AESAUX[16/sizeof(u4_t)];
-u4_t AESKEY[11*16/sizeof(u4_t)];
+u4_t AESKEY[16/sizeof(u4_t)];
 
 // Shift the given buffer left one bit
 static void shift_left(xref2u1_t buf, u1_t len) {
@@ -123,7 +123,7 @@ static void os_aes_ctr (xref2u1_t buf, u2_t len) {
     }
 }
 
-u4_t os_aes (u1_t mode, xref2u1_t buf, u2_t len) {
+u4_t os_aes_generic (u1_t mode, xref2u1_t buf, u2_t len) {
     switch (mode & ~AES_MICNOAUX) {
         case AES_MIC:
             os_aes_cmac(buf, len, /* prepend_aux */ !(mode & AES_MICNOAUX));

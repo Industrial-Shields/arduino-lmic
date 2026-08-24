@@ -13,6 +13,11 @@ Author:
 
 */
 
+// The Adafruit FeatherM0 and FeatherM0 Express BSPs are not consistent
+// as to how they declare themselves. Both are SAMDs. Detect either one.
+#if defined(ARDUINO_ARCH_SAMD)
+# if defined(ADAFRUIT_FEATHER_M0) || defined(ARDUINO_SAMD_FEATHER_M0)
+
 #include <arduino_lmic_hal_boards.h>
 #include <Arduino.h>
 
@@ -72,3 +77,6 @@ const HalPinmap_t *GetPinmap_FeatherM0LoRa(void)
 	}
 
 }; // namespace Arduino_LMIC
+
+# endif // defined(ADAFRUIT_FEATHER_M0) || defined(ARDUINO_SAMD_FEATHER_M0)
+#endif  // defined(ARDUINO_ARCH_SAMD)

@@ -22,7 +22,7 @@ Author:
 #include <SPI.h>
 class cEventQueue;
 
-#define APPLICATION_VERSION ARDUINO_LMIC_VERSION_CALC(3,0,99,10)
+#define APPLICATION_VERSION ARDUINO_LMIC_VERSION_CALC(4, 0, 0, 0)
 
 //
 // For compliance tests with the RWC5020A, we use the default addresses
@@ -30,20 +30,20 @@ class cEventQueue;
 // collisions with a registered app on TTN.
 //
 
-// This EUI must be in little-endian format, so least-significant-byte
+// AppEUI: must be in little-endian format, so least-significant-byte
 // first.  This corresponds to 0x0000000000000001
-// static const u1_t PROGMEM APPEUI[8]= { 1, 0, 0, 0, 0, 0, 0, 0 };
-void os_getArtEui (u1_t* buf) { memset(buf, 0, 8); buf[0] = 1; }
+static const u1_t PROGMEM APPEUI[8]= { 1, 0, 0, 0, 0, 0, 0, 0 };
+void os_getArtEui (u1_t* buf) { memcpy_P(buf, APPEUI, 8); }
 
-// This should also be in little endian format, see above.
+// DevEUI: This should also be in little endian format, see above.
 // This corresponds to 0x0000000000000001
-// static const u1_t PROGMEM DEVEUI[8]= { 1, 0, 0, 0, 0, 0, 0, 0 };
-void os_getDevEui (u1_t* buf) { memset(buf, 0, 8); buf[0] = 1; }
+static const u1_t PROGMEM DEVEUI[8]= { 1, 0, 0, 0, 0, 0, 0, 0 };
+void os_getDevEui (u1_t* buf) { memcpy_P(buf, DEVEUI, 8); }
 
 // This key should be in big endian format (or, since it is not really a
 // number but a block of memory, endianness does not really apply).
-// static const u1_t PROGMEM APPKEY[16] = { 0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 2 };
-void os_getDevKey (u1_t* buf) { memset(buf, 0, 16); buf[15] = 2; }
+static const u1_t PROGMEM APPKEY[16] = { 0, 0, 0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 2 };
+void os_getDevKey (u1_t* buf) { memcpy_P(buf, APPKEY, 16); }
 
 // this data must be kept short -- max is 11 bytes for US DR0
 static uint8_t mydata[] = { 0xCA, 0xFE, 0xF0, 0x0D };
@@ -209,12 +209,20 @@ void LMICOS_logEventUint32(const char *pMessage, uint32_t datum)
     }
 #endif // LMIC_ENABLE_event_logging
 
-hal_failure_handler_t log_assertion;
+lmic_hal_failure_handler_t log_assertion;
 
 void log_assertion(const char *pMessage, uint16_t line) {
+    // Append the assertion to the message queue.
     eventQueue.putEvent(ev_t(-3), pMessage, line);
+
+    // Print as much info as we have. And dump registers if
+    // event logging is enabled:
     eventPrintAll();
+
+    // then signal that we had an assert failure
     Serial.println(F("***HALTED BY ASSERT***"));
+
+    // and hang.
     while (true)
         yield();
 }
@@ -369,7 +377,7 @@ void printFcnts(cEventQueue::eventnode_t &e) {
 void printAllRegisters(void) {
     uint8_t regbuf[0x80];
     regbuf[0] = 0;
-    hal_spi_read(1, regbuf + 1, sizeof(regbuf) - 1);
+    lmic_hal_spi_read(1, regbuf + 1, sizeof(regbuf) - 1);
 
     for (unsigned i = 0; i < sizeof(regbuf); ++i) {
         if (i % 16 == 0) {
@@ -381,14 +389,14 @@ void printAllRegisters(void) {
     }
 
     // reset the radio, just in case the register dump caused issues.
-    hal_pin_rst(0);
+    lmic_hal_pin_rst(0);
     delay(2);
-    hal_pin_rst(2);
+    lmic_hal_pin_rst(2);
     delay(6);
 
     // restore the radio to idle.
     const uint8_t opmode = 0x88;    // LoRa and sleep.
-    hal_spi_write(0x81, &opmode, 1);
+    lmic_hal_spi_write(0x81, &opmode, 1);
 }
 #endif
 
@@ -698,7 +706,7 @@ void setup() {
     }
 
     // now that we have a pinmap, initalize the low levels accordingly.
-    hal_set_failure_handler(log_assertion);
+    lmic_hal_set_failure_handler(log_assertion);
     os_init_ex(pPinMap);
 
     // LMIC_reset() doesn't affect callbacks, so we can do this first.
@@ -725,15 +733,15 @@ void setup_printSignOnDashLine(void)
     printNl();
     }
 
-static constexpr const char *filebasename2(const char *s, const char *p) {
+static constexpr const char *filebasename(const char *s, const char *p) {
     return p[0] == '\0'                     ? s                             :
-           (p[0] == '/' || p[0] == '\\')    ? filebasename2(p + 1, p + 1)   :
-                                              filebasename2(s, p + 1)       ;
+           (p[0] == '/' || p[0] == '\\')    ? filebasename(p + 1, p + 1)    :
+                                              filebasename(s, p + 1)        ;
 }
 
 static constexpr const char *filebasename(const char *s)
     {
-    return filebasename2(s, s);
+    return filebasename(s, s);
     }
 
 void printVersionFragment(char sep, uint8_t v) {
@@ -765,6 +773,16 @@ void setup_printSignOn()
     printVersion(ARDUINO_LMIC_VERSION);
     Serial.print(F(" configured for region "));
     Serial.print(CFG_region);
+
+#if defined(ARDUINO_LMIC_CFG_SUBBAND) && ARDUINO_LMIC_CFG_SUBBAND != -1
+    Serial.print(F(" subband[0:7] "));
+    Serial.print(unsigned(ARDUINO_LMIC_CFG_SUBBAND));
+#endif // defined(ARDUINO_LMIC_CFG_SUBBAND) && ARDUINO_LMIC_CFG_SUBBAND != -1
+
+    if (LMIC_isConfiguredClassC()) {
+        Serial.print(F(", Class C"));
+    }
+
     Serial.println(F(".\nRemember to select 'Line Ending: Newline' at the bottom of the monitor window."));
 
     setup_printSignOnDashLine();
@@ -772,9 +790,15 @@ void setup_printSignOn()
     }
 
 void setupForNetwork(bool preJoin) {
-#if CFG_LMIC_US_like
-    LMIC_selectSubBand(0);
-#endif
+#if defined(ARDUINO_LMIC_CFG_SUBBAND) && ARDUINO_LMIC_CFG_SUBBAND != -1
+    LMIC_selectSubBand(ARDUINO_LMIC_CFG_SUBBAND);
+#endif // defined(ARDUINO_LMIC_CFG_SUBBAND) && ARDUINO_LMIC_CFG_SUBBAND != -1
+
+    if (LMIC_isConfiguredClassC()) {
+        if (! LMIC_enableClassC(1)) {
+            Serial.println(F("Class C enabled failed"));
+        }
+    }
 }
 
 void loop() {

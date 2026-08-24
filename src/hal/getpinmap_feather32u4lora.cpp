@@ -13,6 +13,8 @@ Author:
 
 */
 
+#if defined(ARDUINO_AVR_FEATHER32U4)
+
 #include <arduino_lmic_hal_boards.h>
 #include <Arduino.h>
 
@@ -77,3 +79,5 @@ const HalPinmap_t *GetPinmap_Feather32U4LoRa(void)
 	}
 
 }; // namespace Arduino_LMIC
+
+#endif // ARDUINO_AVR_FEATHER32U4

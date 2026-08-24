@@ -26,7 +26,7 @@ namespace Arduino_LMIC {
 /* these types should match the types used by the LMIC */
 typedef	int32_t	ostime_t;
 
-// this type is used when we need to represent a threee-state signal
+// this type is used when we need to represent a three-state signal
 enum class ThreeState_t : uint8_t {
 	Off = 0,
 	On = 1,
@@ -90,7 +90,11 @@ public:
 
 	virtual void begin(void) {}
 	virtual void end(void) {}
+	virtual uint8_t queryBusyPin(void) { return HalPinmap_t::LMIC_UNUSED_PIN; }
 	virtual bool queryUsingTcxo(void) { return false; }
+	virtual bool queryUsingDcdc(void) { return false; }
+	virtual bool queryUsingDIO2AsRfSwitch(void) { return false; }
+	virtual bool queryUsingDIO3AsTCXOSwitch(void) { return false; }
 
 	// compute desired transmit power policy.  HopeRF needs
 	// (and previous versions of this library always chose)
@@ -110,7 +114,7 @@ public:
 		}
 	};
 
-bool hal_init_with_pinmap(const HalPinmap_t *pPinmap);
+bool lmic_hal_init_with_pinmap(const HalPinmap_t *pPinmap);
 
 }; // end namespace Arduino_LMIC
 

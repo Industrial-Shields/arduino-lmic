@@ -1,6 +1,6 @@
 /*******************************************************************************
  * Copyright (c) 2015-2016 Matthijs Kooijman
- * Copyright (c) 2016-2018 MCCI Corporation
+ * Copyright (c) 2016-2026 MCCI Corporation
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -13,6 +13,7 @@
 #define _hal_hal_h_
 
 #include "arduino_lmic_hal_configuration.h"
+#include "lmic/oslmic_types.h"
 
 // for compatbility reasons, we need to disclose the configuration
 // structure as global type lmic_pinmap.

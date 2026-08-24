@@ -1,6 +1,6 @@
 /*
 * Copyright (c) 2014-2016 IBM Corporation.
-* Copyright (c) 2017, 2019 MCCI Corporation.
+* Copyright (c) 2017, 2019-2021 MCCI Corporation.
 * All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without
@@ -69,6 +69,12 @@ void LMICeu868_setBcnRxParams(void);
 u4_t LMICeu868_convFreq(xref2cu1_t ptr);
 #define LMICbandplan_convFreq(ptr)      LMICeu868_convFreq(ptr)
 
+static inline u1_t
+LMICeu868_queryMaxRx1DrOffset(void) {
+        return 5;
+}
+#define LMICbandplan_queryMaxRx1DrOffset() LMICeu868_queryMaxRx1DrOffset()
+
 void LMICeu868_initJoinLoop(void);
 #define LMICbandplan_initJoinLoop()     LMICeu868_initJoinLoop()
 
@@ -87,5 +93,9 @@ ostime_t LMICeu868_nextJoinTime(ostime_t now);
 
 void LMICeu868_setRx1Params(void);
 #define LMICbandplan_setRx1Params()     LMICeu868_setRx1Params()
+
+#undef LMICbandplan_validDR
+bit_t LMICeu868_validDR(dr_t dr);
+#define LMICbandplan_validDR(dr)        LMICeu868_validDR(dr)
 
 #endif // _lmic_eu868_h_

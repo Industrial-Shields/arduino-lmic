@@ -13,6 +13,8 @@ Author:
 
 */
 
+#if defined(ARDUINO_HELTEC_WIFI_LORA_32) || defined(ARDUINO_HELTEC_WIFI_LORA_32_V2) || defined(ARDUINO_HELTEC_WIRELESS_STICK)
+
 #include <arduino_lmic_hal_boards.h>
 #include <Arduino.h>
 
@@ -78,3 +80,5 @@ const HalPinmap_t *GetPinmap_heltec_lora32(void)
 }
 
 }; // namespace Arduino_LMIC
+
+#endif // defined(ARDUINO_HELTEC_WIFI_LORA_32) || defined(ARDUINO_HELTEC_WIFI_LORA_32_V2) || defined(ARDUINO_HELTEC_WIRELESS_STICK)

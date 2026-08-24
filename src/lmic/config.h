@@ -50,11 +50,15 @@
 //#define CFG_sx1276_radio 1
 
 // ensure that a radio is defined.
-#if ! (defined(CFG_sx1272_radio) || defined(CFG_sx1276_radio))
+#if !(defined(CFG_sx1272_radio) || defined(CFG_sx1276_radio) || defined(CFG_sx1261_radio) || defined(CFG_sx1262_radio))
 # warning Target radio not defined, assuming CFG_sx1276_radio
 #define CFG_sx1276_radio 1
-#elif defined(CFG_sx1272_radio) && defined(CFG_sx1276_radio)
-# error You can define at most one of CFG_sx1272_radio and CF_sx1276_radio
+#elif defined(CFG_sx1272_radio) && (defined(CFG_sx1276_radio) || defined(CFG_sx1261_radio) || defined(CFG_sx1262_radio))
+# error You can define at most one target radio
+#elif defined(CFG_sx1276_radio) && (defined(CFG_sx1261_radio) || defined(CFG_sx1262_radio))
+# error You can define at most one target radio
+#elif defined(CFG_sx1261_radio) && (defined(CFG_sx1261_radio))
+# error You can define at most one target radio
 #endif
 
 // LMIC requires ticks to be 15.5μs - 100 μs long
@@ -169,7 +173,7 @@
 // enable support for MCMD_DeviceTimeReq and MCMD_DeviceTimeAns
 // this is always defined, and non-zero to enable it.
 #if !defined(LMIC_ENABLE_DeviceTimeReq)
-# define LMIC_ENABLE_DeviceTimeReq 0
+# define LMIC_ENABLE_DeviceTimeReq 1
 #endif
 
 // LMIC_ENABLE_user_events
@@ -187,9 +191,17 @@
 #endif
 
 // LMIC_ENABLE_long_messages
-// LMIC certification requires that this be enabled.
-#if !defined(LMIC_ENABLE_long_messages)
-# define LMIC_ENABLE_long_messages 1        /* PARAM */
+// LMIC certification requires full-length 255 frames, but to save RAM,
+// a shorter maximum can be set. This controls both RX and TX buffers,
+// so reducing this by 1 saves 2 bytes of RAM.
+#if defined(LMIC_ENABLE_long_messages) && defined(LMIC_MAX_FRAME_LENGTH)
+#error "Use only one of LMIC_ENABLE_long_messages or LMIC_MAX_FRAME_LENGTH"
+#elif defined(LMIC_ENABLE_long_messages) && LMIC_ENABLE_long_messages == 0
+# define LMIC_MAX_FRAME_LENGTH 64
+#elif !defined(LMIC_MAX_FRAME_LENGTH)
+# define LMIC_MAX_FRAME_LENGTH 255
+#elif LMIC_MAX_FRAME_LENGTH > 255
+#error "LMIC_MAX_FRAME_LENGTH cannot be larger than 255"
 #endif
 
 // LMIC_ENABLE_event_logging
@@ -210,6 +222,12 @@
 // be platforms that require wider errors.
 #if !defined(LMIC_ENABLE_arbitrary_clock_error)
 # define LMIC_ENABLE_arbitrary_clock_error 0	/* PARAM */
+#endif
+
+// LMIC_ENABLE_class_c
+// Define this non-zero to include Class C support in the code.
+#if !defined(LMIC_ENABLE_class_c)
+# define LMIC_ENABLE_class_c 0	/* PARAM */
 #endif
 
 #endif // _lmic_config_h_

@@ -27,10 +27,15 @@
  * DevEUI and AppKey.
  *
  * Do not forget to define the radio type correctly in config.h.
+ * 
+ * You will need to also install the library github.com/PaulStoffregen/Time;
+ * you need a version that has TimeLib.h.
  *
  *******************************************************************************/
 
-#include <Time.h>
+// requires library: github.com/PaulStoffregen/Time
+#include <TimeLib.h>    // can't use <Time.h> starting with v1.6.1
+
 #include <lmic.h>
 #include <hal/hal.h>
 #include <SPI.h>

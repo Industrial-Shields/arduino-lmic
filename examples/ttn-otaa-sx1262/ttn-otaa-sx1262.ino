@@ -1,6 +1,7 @@
 /*******************************************************************************
  * Copyright (c) 2015 Thomas Telkamp and Matthijs Kooijman
  * Copyright (c) 2018 Terry Moore, MCCI
+ * Copyright (c) 2025 Tristan Webber, Shrunk Innovation Labs.
  *
  * Permission is hereby granted, free of charge, to anyone
  * obtaining a copy of this document and accompanying files,
@@ -8,15 +9,24 @@
  * including, but not limited to, copying, modification and redistribution.
  * NO WARRANTY OF ANY KIND IS PROVIDED.
  *
- * This example sends a valid LoRaWAN packet with payload "Hello,
- * world!", using frequency and encryption settings matching those of
- * the The Things Network. It's pre-configured for the Adafruit
- * Feather M0 LoRa.
+ * This example demonstrates how to manually configure a board 
+ * requiring advanced initialisation (https://github.com/mcci-catena/arduino-lmic/blob/master/doc/HOWTO-Manually-Configure.md#advanced-initialization).
+ * This is required for boards that need some level of configuration
+ * beyond a simple pinmap. For example, for modems wired to
+ * directly control the RfSwitch, or to define the 'BUSY' pin for
+ * SX126x series modems.
  *
- * This uses OTAA (Over-the-air activation), where where a DevEUI and
- * application key is configured, which are used in an over-the-air
- * activation procedure where a DevAddr and session keys are
- * assigned/generated for use with all further communication.
+ * If you find yourself needing to do a configuration in this way
+ * for a commercially available development board, consider making
+ * a PR to integrate your board to the library.
+ *
+ * Here, a Heltec Wireless Stick Lite V3 is configured manually
+ * by creating a new class derived from
+ * `Arduino_LMIC::HalConfiguration_t` to override default methods
+ * of the base class and ensure proper operation of the SX1262
+ * modem.
+ *
+ * This example is otherwise identical to the `ttn-otaa` example.
  *
  * Note: LoRaWAN per sub-band duty-cycle limitation is enforced (1% in
  * g1, 0.1% in g2), but not the TTN fair usage policy (which is probably
@@ -54,16 +64,16 @@
 // first. When copying an EUI from ttnctl output, this means to reverse
 // the bytes. For TTN issued EUIs the last bytes should be 0xD5, 0xB3,
 // 0x70.
-static const u1_t PROGMEM APPEUI[8]= { FILLMEIN };
+static const u1_t PROGMEM APPEUI[8]={ FILLMEIN };
 void os_getArtEui (u1_t* buf) { memcpy_P(buf, APPEUI, 8);}
 
 // This should also be in little endian format, see above.
-static const u1_t PROGMEM DEVEUI[8]= { FILLMEIN };
+static const u1_t PROGMEM DEVEUI[8]={ FILLMEIN };
 void os_getDevEui (u1_t* buf) { memcpy_P(buf, DEVEUI, 8);}
 
 // This key should be in big endian format (or, since it is not really a
 // number but a block of memory, endianness does not really apply). In
-// practice, a key taken from the TTN console can be copied as-is.
+// practice, a key taken from ttnctl can be copied as-is.
 static const u1_t PROGMEM APPKEY[16] = { FILLMEIN };
 void os_getDevKey (u1_t* buf) {  memcpy_P(buf, APPKEY, 16);}
 
@@ -74,60 +84,42 @@ static osjob_t sendjob;
 // cycle limitations).
 const unsigned TX_INTERVAL = 60;
 
+// Advanced HalConfiguration
+// Example is for a Heltec Wireless Stick Lite V3
+class cHalConfiguration_t: public Arduino_LMIC::HalConfiguration_t
+{
+public:
+    // All SX126x series modems need the busy pin to be defined
+    // by overriding the `queryBusyPin()` method.
+    virtual u1_t queryBusyPin(void) override { return 13; };
+
+    // SX126x series modems can be wired to use a DC-DC or LDO
+    // voltage regulator. Configure DC-DC by overriding this method
+    virtual bool queryUsingDcdc(void) override { return true; };
+
+    // SX126x series modems can be wired to so that DIO2
+    // controls an external RF switch.
+    virtual bool queryUsingDIO2AsRfSwitch(void) override { return true; };
+
+    // Some modems switch a TCXO using DIO3. Configure by
+    // overriding this method.
+    virtual bool queryUsingDIO3AsTCXOSwitch(void) override { return true; };
+};
+
+cHalConfiguration_t myConfig;
+
 // Pin mapping
-//
-// Adafruit BSPs are not consistent -- m0 express defs ARDUINO_SAMD_FEATHER_M0,
-// m0 defs ADAFRUIT_FEATHER_M0
-//
-#if defined(ARDUINO_SAMD_FEATHER_M0) || defined(ADAFRUIT_FEATHER_M0)
-// Pin mapping for Adafruit Feather M0 LoRa, etc.
 const lmic_pinmap lmic_pins = {
     .nss = 8,
     .rxtx = LMIC_UNUSED_PIN,
-    .rst = 4,
-    .dio = {3, 6, LMIC_UNUSED_PIN},
+    .rst = 12,
+    .dio = {14, LMIC_UNUSED_PIN, LMIC_UNUSED_PIN},
     .rxtx_rx_active = 0,
-    .rssi_cal = 8,              // LBT cal for the Adafruit Feather M0 LoRa, in dB
+    .rssi_cal = 10,
     .spi_freq = 8000000,
+    // Advanced configurations are passed to the pinmap via pConfig
+    .pConfig = &myConfig,
 };
-#elif defined(ARDUINO_AVR_FEATHER32U4)
-// Pin mapping for Adafruit Feather 32u4 LoRa, etc.
-// Just like Feather M0 LoRa, but uses SPI at 1MHz; and that's only
-// because MCCI doesn't have a test board; probably higher frequencies
-// will work.
-const lmic_pinmap lmic_pins = {
-    .nss = 8,
-    .rxtx = LMIC_UNUSED_PIN,
-    .rst = 4,
-    .dio = {7, 6, LMIC_UNUSED_PIN},
-    .rxtx_rx_active = 0,
-    .rssi_cal = 8,              // LBT cal for the Adafruit Feather 32U4 LoRa, in dB
-    .spi_freq = 1000000,
-};
-#elif defined(ARDUINO_CATENA_4551)
-// Pin mapping for Murata module / Catena 4551
-const lmic_pinmap lmic_pins = {
-        .nss = 7,
-        .rxtx = 29,
-        .rst = 8,
-        .dio = { 25,    // DIO0 (IRQ) is D25
-                 26,    // DIO1 is D26
-                 27,    // DIO2 is D27
-               },
-        .rxtx_rx_active = 1,
-        .rssi_cal = 10,
-        .spi_freq = 8000000     // 8MHz
-};
-#elif defined(MCCI_CATENA_4610) 
-#include "arduino_lmic_hal_boards.h"
-const lmic_pinmap lmic_pins = *Arduino_LMIC::GetPinmap_Catena4610();
-#elif defined(ARDUINO_DISCO_L072CZ_LRWAN1)
-#include "arduino_lmic_hal_boards.h"
-// Pin mapping Discovery 
-const lmic_pinmap lmic_pins = *Arduino_LMIC::GetPinmap_Disco_L072cz_Lrwan1();
-#else
-# error "Unknown target"
-#endif
 
 void printHex2(unsigned v) {
     v &= 0xff;
@@ -201,14 +193,13 @@ void onEvent (ev_t ev) {
         case EV_REJOIN_FAILED:
             Serial.println(F("EV_REJOIN_FAILED"));
             break;
-            break;
         case EV_TXCOMPLETE:
             Serial.println(F("EV_TXCOMPLETE (includes waiting for RX windows)"));
             if (LMIC.txrxFlags & TXRX_ACK)
               Serial.println(F("Received ack"));
             if (LMIC.dataLen) {
-              Serial.println(F("Received "));
-              Serial.println(LMIC.dataLen);
+              Serial.print(F("Received "));
+              Serial.print(LMIC.dataLen);
               Serial.println(F(" bytes of payload"));
             }
             // Schedule next transmission
@@ -271,9 +262,6 @@ void do_send(osjob_t* j){
 }
 
 void setup() {
-    delay(5000);
-    while (! Serial)
-        ;
     Serial.begin(9600);
     Serial.println(F("Starting"));
 
@@ -284,28 +272,10 @@ void setup() {
     delay(1000);
     #endif
 
-    #if defined(ARDUINO_DISCO_L072CZ_LRWAN1)
-    SPI.setMOSI(RADIO_MOSI_PORT);
-    SPI.setMISO(RADIO_MISO_PORT);
-    SPI.setSCLK(RADIO_SCLK_PORT);
-    SPI.setSSEL(RADIO_NSS_PORT);
-    #endif
-
     // LMIC init
     os_init();
     // Reset the MAC state. Session and pending data transfers will be discarded.
     LMIC_reset();
-
-    // allow much more clock error than the X/1000 default. See:
-    // https://github.com/mcci-catena/arduino-lorawan/issues/74#issuecomment-462171974
-    // https://github.com/mcci-catena/arduino-lmic/commit/42da75b56#diff-16d75524a9920f5d043fe731a27cf85aL633
-    // the X/1000 means an error rate of 0.1%; the above issue discusses using values up to 10%.
-    // so, values from 10 (10% error, the most lax) to 1000 (0.1% error, the most strict) can be used.
-    LMIC_setClockError(1 * MAX_CLOCK_ERROR / 40);
-
-    LMIC_setLinkCheckMode(0);
-    LMIC_setDrTxpow(DR_SF7,14);
-    LMIC_selectSubBand(1);
 
     // Start job (sending automatically starts OTAA too)
     do_send(&sendjob);

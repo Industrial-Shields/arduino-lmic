@@ -13,6 +13,8 @@ Author:
 
 */
 
+#if defined(ARDUINO_TTGO_LoRa32_V1)
+
 #include <arduino_lmic_hal_boards.h>
 #include <Arduino.h>
 
@@ -76,3 +78,5 @@ const HalPinmap_t * GetPinmap_ttgo_lora32_v1 (void)
 	}
 
 }; // namespace Arduino_LMIC
+
+#endif // ARDUINO_TTGO_LoRa32_V1

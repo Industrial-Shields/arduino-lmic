@@ -13,6 +13,10 @@ Author:
 
 */
 
+#if defined(ARDUINO_MCCI_CATENA_4420) || \
+    /* legacy names */ \
+    defined(ARDUINO_CATENA_4420)
+
 #include <arduino_lmic_hal_boards.h>
 #include <Arduino.h>
 
@@ -71,4 +75,6 @@ const HalPinmap_t *GetPinmap_Catena4420(void)
 	return &myPinmap;
 	}
 
-} // namespace Arduino_LMIC;
+} // namespace Arduino_LMIC
+
+#endif

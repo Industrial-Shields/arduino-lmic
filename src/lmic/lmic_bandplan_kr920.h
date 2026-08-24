@@ -1,6 +1,6 @@
 /*
 * Copyright (c) 2014-2016 IBM Corporation.
-* Copyright (c) 2017, 2019 MCCI Corporation.
+* Copyright (c) 2017, 2019-2021 MCCI Corporation.
 * All rights reserved.
 *
 *  Redistribution and use in source and binary forms, with or without
@@ -69,6 +69,12 @@ void LMICkr920_setBcnRxParams(void);
 u4_t LMICkr920_convFreq(xref2cu1_t ptr);
 #define LMICbandplan_convFreq(ptr)      LMICkr920_convFreq(ptr)
 
+static inline u1_t
+LMICkr920_queryMaxRx1DrOffset(void) {
+        return 5;
+}
+#define LMICbandplan_queryMaxRx1DrOffset() LMICkr920_queryMaxRx1DrOffset()
+
 void LMICkr920_initJoinLoop(void);
 #define LMICbandplan_initJoinLoop()     LMICkr920_initJoinLoop()
 
@@ -87,5 +93,9 @@ void LMICkr920_setRx1Params(void);
 #undef LMICbandplan_updateTx
 void LMICkr920_updateTx(ostime_t txbeg);
 #define LMICbandplan_updateTx(t)        LMICkr920_updateTx(t)
+
+#undef LMICbandplan_validDR
+bit_t LMICkr920_validDR(dr_t dr);
+#define LMICbandplan_validDR(dr)        LMICkr920_validDR(dr)
 
 #endif // _lmic_kr920_h_
