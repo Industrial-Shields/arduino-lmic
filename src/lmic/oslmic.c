@@ -48,6 +48,10 @@ int os_init_ex (const void *pintable) {
 }
 
 void os_init() {
+  // IS: Always add a 1% clock error for AVR CPUs
+#if defined(__AVR__)
+    LMIC_setClockError(MAX_CLOCK_ERROR * 1 / 100);
+#endif
     if (os_init_ex((const void *)&lmic_pins))
         return;
     ASSERT(0);
